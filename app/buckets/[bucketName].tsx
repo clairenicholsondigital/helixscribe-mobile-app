@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Tabs, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { StyleSheet, Text } from 'react-native';
 
@@ -24,7 +24,7 @@ export default function BucketChunksScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: bucketName || 'Bucket' }} />
+      <Tabs.Screen options={{ title: bucketName || 'Bucket' }} />
       <Screen
         title={bucketName}
         subtitle="This mirrors the current bucket chunk page and keeps editing intentionally simple on mobile.">
