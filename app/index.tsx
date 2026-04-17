@@ -25,6 +25,11 @@ export default function HomeScreen() {
             onPress={() => router.push('/workflows')}
             tone="ghost"
           />
+          <AppButton
+            label="Run AI"
+            onPress={() => router.push('/run-ai')}
+            tone="secondary"
+          />
         </View>
       </SectionCard>
 
@@ -37,6 +42,7 @@ export default function HomeScreen() {
         <Text style={styles.scopeLine}>• Bucket list and chunk pages</Text>
         <Text style={styles.scopeLine}>• Workflow V2 list</Text>
         <Text style={styles.scopeLine}>• Workflow detail, save, and test run</Text>
+        <Text style={styles.scopeLine}>• Run AI simplified tester</Text>
         <Text style={styles.scopeLine}>• Run detail</Text>
       </SectionCard>
     </Screen>
