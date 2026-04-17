@@ -34,9 +34,9 @@ export function StepEditor({
       <View style={styles.header}>
         <Text style={styles.title}>Step {index + 1}</Text>
         <View style={styles.actionRow}>
-          {onMoveUp ? <AppButton label="Up" onPress={onMoveUp} tone="ghost" /> : null}
-          {onMoveDown ? <AppButton label="Down" onPress={onMoveDown} tone="ghost" /> : null}
-          <AppButton label="Remove" onPress={onDelete} tone="danger" />
+          {onMoveUp ? <AppButton label="Up" onPress={onMoveUp} size="small" tone="ghost" /> : null}
+          {onMoveDown ? <AppButton label="Down" onPress={onMoveDown} size="small" tone="ghost" /> : null}
+          <AppButton label="Remove" onPress={onDelete} size="small" tone="danger" />
         </View>
       </View>
 

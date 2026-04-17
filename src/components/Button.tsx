@@ -9,13 +9,15 @@ type AppButtonProps = {
   onPress: () => void;
   tone?: ButtonTone;
   disabled?: boolean;
+  size?: 'regular' | 'small';
 };
 
 export function AppButton({
   label,
   onPress,
   tone = 'primary',
-  disabled = false
+  disabled = false,
+  size = 'regular'
 }: AppButtonProps) {
   return (
     <Pressable
@@ -24,11 +26,18 @@ export function AppButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
+        sizeStyles[size],
         toneStyles[tone],
         disabled && styles.disabled,
         pressed && !disabled && styles.pressed
       ]}>
-      <Text style={[styles.label, labelStyles[tone], disabled && styles.disabledLabel]}>
+      <Text
+        style={[
+          styles.label,
+          labelStyles[tone],
+          labelSizeStyles[size],
+          disabled && styles.disabledLabel
+        ]}>
         {label}
       </Text>
     </Pressable>
@@ -79,6 +88,15 @@ const toneStyles: Record<ButtonTone, object> = {
   }
 };
 
+const sizeStyles: Record<NonNullable<AppButtonProps['size']>, object> = {
+  regular: {},
+  small: {
+    minHeight: 24,
+    paddingHorizontal: tokens.spacing.sm,
+    paddingVertical: tokens.spacing.xs
+  }
+};
+
 const labelStyles: Record<ButtonTone, object> = {
   primary: {
     color: '#ffffff'
@@ -91,5 +109,12 @@ const labelStyles: Record<ButtonTone, object> = {
   },
   danger: {
     color: '#ffffff'
+  }
+};
+
+const labelSizeStyles: Record<NonNullable<AppButtonProps['size']>, object> = {
+  regular: {},
+  small: {
+    fontSize: 13
   }
 };
