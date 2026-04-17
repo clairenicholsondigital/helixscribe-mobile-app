@@ -1,7 +1,8 @@
+import { Picker } from '@react-native-picker/picker';
+import { useState } from 'react';
 import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { StepEditor } from '@/components/StepEditor';
-import { ScheduleEditor } from '@/components/ScheduleEditor';
 import { SectionCard } from '@/components/SectionCard';
 import {
   makeStepDraft,
@@ -17,6 +18,8 @@ type WorkflowFormProps = {
 };
 
 export function WorkflowForm({ draft, onChange }: WorkflowFormProps) {
+  const [pendingStepTemplate, setPendingStepTemplate] = useState<string>('none');
+
   function updateStep(index: number, nextStep: WorkflowStepDraft) {
     const nextSteps = draft.steps.map((step, currentIndex) =>
       currentIndex === index ? nextStep : step
@@ -49,6 +52,17 @@ export function WorkflowForm({ draft, onChange }: WorkflowFormProps) {
       ...draft,
       steps: [...draft.steps, makeStepDraft(templateKey)]
     });
+  }
+
+  function handleAddStep() {
+    if (pendingStepTemplate === 'none') {
+      return;
+    }
+
+    addStep(
+      pendingStepTemplate as keyof typeof import('@/constants/workflowStepDefaults').workflowStepTemplates
+    );
+    setPendingStepTemplate('none');
   }
 
   return (
@@ -105,15 +119,24 @@ export function WorkflowForm({ draft, onChange }: WorkflowFormProps) {
       </SectionCard>
 
       <SectionCard title="Steps" description="Edit the same fields your current frontend sends to the workflow V2 endpoints.">
-        <View style={styles.templateRow}>
-          {workflowStepTemplateOptions.map((option) => (
-            <AppButton
-              key={option.key}
-              label={option.label}
-              onPress={() => addStep(option.key)}
-              tone="ghost"
-            />
-          ))}
+        <View style={styles.addStepControls}>
+          <View style={styles.pickerWrap}>
+            <Picker
+              selectedValue={pendingStepTemplate}
+              onValueChange={(value) => setPendingStepTemplate(String(value))}
+              style={styles.picker}>
+              <Picker.Item label="Select step to add" value="none" />
+              {workflowStepTemplateOptions.map((option) => (
+                <Picker.Item key={option.key} label={option.label} value={option.key} />
+              ))}
+            </Picker>
+          </View>
+          <AppButton
+            label="Add step"
+            onPress={handleAddStep}
+            tone="ghost"
+            disabled={pendingStepTemplate === 'none'}
+          />
         </View>
 
         {draft.steps.map((step, index) => (
@@ -127,13 +150,6 @@ export function WorkflowForm({ draft, onChange }: WorkflowFormProps) {
             step={step}
           />
         ))}
-      </SectionCard>
-
-      <SectionCard title="Schedule config" description="For mobile, the raw JSON editor is the quickest way to stay flexible without rebuilding every desktop control.">
-        <ScheduleEditor
-          onChangeText={(value) => onChange({ ...draft, scheduleConfigText: value })}
-          value={draft.scheduleConfigText}
-        />
       </SectionCard>
     </>
   );
@@ -165,10 +181,18 @@ const styles = StyleSheet.create({
   textArea: {
     minHeight: 88
   },
-  templateRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  addStepControls: {
     gap: tokens.spacing.sm
+  },
+  pickerWrap: {
+    borderWidth: 1,
+    borderColor: tokens.colors.border,
+    borderRadius: tokens.radius.md,
+    backgroundColor: tokens.colors.inputBackground,
+    overflow: 'hidden'
+  },
+  picker: {
+    color: tokens.colors.text
   },
   switchRow: {
     flexDirection: 'row',
