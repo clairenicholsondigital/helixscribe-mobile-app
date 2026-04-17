@@ -14,8 +14,7 @@ import { StatusPill, toneForRunStatus } from '@/components/StatusPill';
 import { WorkflowForm } from '@/components/WorkflowForm';
 import {
   deleteWorkflowRunV2,
-  updateWorkflowV2,
-  upsertWorkflowSchedule
+  updateWorkflowV2
 } from '@/api/workflowsV2';
 import { useWorkflowV2 } from '@/hooks/useWorkflowV2';
 import { queryKeys } from '@/lib/queryKeys';
@@ -62,12 +61,8 @@ export default function WorkflowDetailScreen() {
 
     setSaving(true);
     try {
-      const payload = draftToUpdatePayload(draft);
+      const { schedule_config: _scheduleConfig, ...payload } = draftToUpdatePayload(draft);
       await updateWorkflowV2(workflowId, payload);
-      await upsertWorkflowSchedule(
-        workflowId,
-        (payload.schedule_config ?? {}) as Record<string, unknown>
-      );
       await refreshAfterRun();
       Alert.alert('Saved', 'Workflow changes were saved.');
     } catch (error) {
@@ -144,6 +139,22 @@ export default function WorkflowDetailScreen() {
             disabled={saving}
             label={saving ? 'Saving…' : 'Save workflow'}
             onPress={handleSave}
+          />
+        </SectionCard>
+
+
+        <SectionCard
+          title="Schedule config"
+          description="Manage schedule JSON on a dedicated screen to keep this detail view compact.">
+          <AppButton
+            label="Edit schedule config"
+            tone="ghost"
+            onPress={() =>
+              router.push({
+                pathname: '/workflows/[workflowId]/schedule',
+                params: { workflowId }
+              })
+            }
           />
         </SectionCard>
 

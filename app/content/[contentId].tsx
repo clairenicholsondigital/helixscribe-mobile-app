@@ -126,6 +126,7 @@ export default function ContentDetailScreen() {
   const [summary, setSummary] = useState('');
   const [body, setBody] = useState('');
   const [status, setStatus] = useState<ContentItem['status']>('draft');
+  const [isPreviewExpanded, setIsPreviewExpanded] = useState(true);
   const [isMetaExpanded, setIsMetaExpanded] = useState(false);
 
   useEffect(() => {
@@ -274,8 +275,23 @@ export default function ContentDetailScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Preview</Text>
-            <MarkdownPreview value={body} />
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setIsPreviewExpanded((previous) => !previous)}
+              style={styles.accordionHeader}>
+              <Text style={styles.metaAccordionTitle}>Preview</Text>
+              <Ionicons
+                name={isPreviewExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
+                size={16}
+                color={tokens.colors.muted}
+              />
+            </Pressable>
+
+            {isPreviewExpanded ? (
+              <View style={styles.accordionBody}>
+                <MarkdownPreview value={body} />
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.field}>
