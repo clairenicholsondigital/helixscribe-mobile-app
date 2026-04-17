@@ -236,19 +236,6 @@ export default function ContentDetailScreen() {
               placeholder="Enter title"
             />
           </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>Summary</Text>
-            <TextInput
-              value={summary}
-              onChangeText={setSummary}
-              style={[styles.input, styles.textArea]}
-              multiline
-              placeholder="Enter summary"
-              textAlignVertical="top"
-            />
-          </View>
-
           <View style={styles.field}>
             <View style={styles.labelRow}>
               <Text style={styles.label}>Body</Text>
