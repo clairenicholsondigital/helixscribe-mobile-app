@@ -21,6 +21,7 @@ export default function RootLayout() {
             <Stack.Screen name="chunks/[chunkId]" options={{ title: 'Chunk detail' }} />
             <Stack.Screen name="workflows/[workflowId]" options={{ title: 'Workflow detail' }} />
             <Stack.Screen name="workflows/new" options={{ title: 'New workflow' }} />
+            <Stack.Screen name="run-ai" options={{ title: 'Run AI' }} />
             <Stack.Screen name="runs/[runId]" options={{ title: 'Run detail' }} />
           </Stack>
         </SafeAreaProvider>
