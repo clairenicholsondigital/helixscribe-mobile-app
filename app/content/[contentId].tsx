@@ -126,7 +126,7 @@ export default function ContentDetailScreen() {
   const [summary, setSummary] = useState('');
   const [body, setBody] = useState('');
   const [status, setStatus] = useState<ContentItem['status']>('draft');
-  const [isPreviewExpanded, setIsPreviewExpanded] = useState(true);
+  const [activeBodyTab, setActiveBodyTab] = useState<'raw' | 'preview'>('raw');
   const [isMetaExpanded, setIsMetaExpanded] = useState(false);
 
   useEffect(() => {
@@ -251,34 +251,57 @@ export default function ContentDetailScreen() {
                 <Text style={styles.copyButtonLabel}>Copy</Text>
               </Pressable>
             </View>
-            <TextInput
-              value={body}
-              onChangeText={setBody}
-              style={[styles.input, styles.largeTextArea]}
-              multiline
-              placeholder="Enter content body"
-              textAlignVertical="top"
-            />
-          </View>
-
-          <View style={styles.field}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setIsPreviewExpanded((previous) => !previous)}
-              style={styles.accordionHeader}>
-              <Text style={styles.metaAccordionTitle}>Preview</Text>
-              <Ionicons
-                name={isPreviewExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
-                size={16}
-                color={tokens.colors.muted}
-              />
-            </Pressable>
-
-            {isPreviewExpanded ? (
-              <View style={styles.accordionBody}>
-                <MarkdownPreview value={body} />
+            <View style={styles.bodyTabsContainer}>
+              <View style={styles.tabList}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setActiveBodyTab('raw')}
+                  style={[
+                    styles.tabButton,
+                    activeBodyTab === 'raw' ? styles.tabButtonActive : null,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.tabButtonLabel,
+                      activeBodyTab === 'raw' ? styles.tabButtonLabelActive : null,
+                    ]}>
+                    Raw
+                  </Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setActiveBodyTab('preview')}
+                  style={[
+                    styles.tabButton,
+                    activeBodyTab === 'preview' ? styles.tabButtonActive : null,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.tabButtonLabel,
+                      activeBodyTab === 'preview'
+                        ? styles.tabButtonLabelActive
+                        : null,
+                    ]}>
+                    Preview
+                  </Text>
+                </Pressable>
               </View>
-            ) : null}
+
+              {activeBodyTab === 'raw' ? (
+                <TextInput
+                  value={body}
+                  onChangeText={setBody}
+                  style={[styles.input, styles.largeTextArea]}
+                  multiline
+                  placeholder="Enter content body"
+                  textAlignVertical="top"
+                />
+              ) : (
+                <View style={styles.accordionBody}>
+                  <MarkdownPreview value={body} />
+                </View>
+              )}
+            </View>
           </View>
 
           <View style={styles.field}>
@@ -363,6 +386,37 @@ const styles = StyleSheet.create({
   },
   largeTextArea: {
     minHeight: 160,
+  },
+  bodyTabsContainer: {
+    gap: tokens.spacing.sm,
+  },
+  tabList: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: tokens.colors.border,
+    borderRadius: tokens.radius.md,
+    padding: 4,
+    backgroundColor: tokens.colors.background,
+    gap: 4,
+  },
+  tabButton: {
+    flex: 1,
+    borderRadius: tokens.radius.sm,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabButtonActive: {
+    backgroundColor: tokens.colors.card,
+  },
+  tabButtonLabel: {
+    color: tokens.colors.muted,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  tabButtonLabelActive: {
+    color: tokens.colors.primary,
   },
   copyButton: {
     flexDirection: 'row',
