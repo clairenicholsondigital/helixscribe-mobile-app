@@ -16,9 +16,8 @@ export default function RootLayout() {
             screenOptions={{
               headerBackTitle: 'Back'
             }}>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="index" options={{ title: 'Home' }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="home" options={{ title: 'Home' }} />
             <Stack.Screen name="content/index" options={{ title: 'Content' }} />
             <Stack.Screen name="content/[contentId]" options={{ title: 'Content detail' }} />
             <Stack.Screen name="my-schedule" options={{ title: 'My Schedule' }} />
