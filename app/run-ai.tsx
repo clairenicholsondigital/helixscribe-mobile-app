@@ -1,5 +1,5 @@
 import { Picker } from '@react-native-picker/picker';
-import { router, Tabs } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
@@ -145,7 +145,7 @@ export default function RunAiScreen() {
 
   return (
     <>
-      <Tabs.Screen options={{ title: 'Run AI' }} />
+      <Stack.Screen options={{ title: 'Run AI' }} />
       <Screen
         title="Run AI"
         subtitle="Pick any workflow, type simple key/value inputs, and test without writing JSON.">
