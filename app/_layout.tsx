@@ -21,6 +21,7 @@ export default function RootLayout() {
             <Stack.Screen name="buckets/index" options={{ title: 'Knowledge buckets' }} />
             <Stack.Screen name="workflows/index" options={{ title: 'Workflows V2' }} />
             <Stack.Screen name="workflows/new" options={{ title: 'New workflow' }} />
+            <Stack.Screen name="run-ai" options={{ title: 'Run AI' }} />
             <Stack.Screen name="runs/[runId]" options={{ title: 'Run detail' }} />
           </Stack>
         </SafeAreaProvider>
