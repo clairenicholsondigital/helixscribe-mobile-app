@@ -16,7 +16,7 @@ import { queryKeys } from '@/lib/queryKeys';
 import { formatDateTime, formatError, truncateText } from '@/lib/utils';
 import { tokens } from '@/theme/tokens';
 
-export default function WorkflowsScreen() {
+export function WorkflowsScreen() {
   const queryClient = useQueryClient();
   const workflowsQuery = useWorkflowsV2();
   const [runningWorkflowId, setRunningWorkflowId] = useState<string | null>(null);
