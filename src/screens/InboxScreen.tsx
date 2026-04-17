@@ -17,7 +17,7 @@ import { queryKeys } from '@/lib/queryKeys';
 import { buildMobileItemId, formatError, parseTagsInput } from '@/lib/utils';
 import { tokens } from '@/theme/tokens';
 
-export default function InboxScreen() {
+export function InboxScreen() {
   const queryClient = useQueryClient();
   const bucketsQuery = useBuckets();
 

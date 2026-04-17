@@ -16,10 +16,10 @@ export default function RootLayout() {
             screenOptions={{
               headerBackTitle: 'Back'
             }}>
-            <Stack.Screen name="index" options={{ title: 'HelixScribe' }} />
-            <Stack.Screen name="inbox" options={{ title: 'Inbox submission' }} />
-            <Stack.Screen name="buckets/index" options={{ title: 'Knowledge buckets' }} />
-            <Stack.Screen name="workflows/index" options={{ title: 'Workflows V2' }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="buckets/[bucketName]" options={{ title: 'Bucket chunks' }} />
+            <Stack.Screen name="chunks/[chunkId]" options={{ title: 'Chunk detail' }} />
+            <Stack.Screen name="workflows/[workflowId]" options={{ title: 'Workflow detail' }} />
             <Stack.Screen name="workflows/new" options={{ title: 'New workflow' }} />
             <Stack.Screen name="runs/[runId]" options={{ title: 'Run detail' }} />
           </Stack>
