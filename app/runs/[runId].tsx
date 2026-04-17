@@ -1,4 +1,4 @@
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, Tabs, useLocalSearchParams } from 'expo-router';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -42,7 +42,7 @@ export default function RunDetailScreen() {
   if (runQuery.isLoading) {
     return (
       <>
-        <Stack.Screen options={{ title: 'Run detail' }} />
+        <Tabs.Screen options={{ title: 'Run detail' }} />
         <Screen>
           <LoadingState label="Loading run…" />
         </Screen>
@@ -53,7 +53,7 @@ export default function RunDetailScreen() {
   if (runQuery.isError) {
     return (
       <>
-        <Stack.Screen options={{ title: 'Run detail' }} />
+        <Tabs.Screen options={{ title: 'Run detail' }} />
         <Screen>
           <ErrorState message={formatError(runQuery.error)} onRetry={() => runQuery.refetch()} />
         </Screen>
@@ -67,7 +67,7 @@ export default function RunDetailScreen() {
   if (!run) {
     return (
       <>
-        <Stack.Screen options={{ title: 'Run detail' }} />
+        <Tabs.Screen options={{ title: 'Run detail' }} />
         <Screen>
           <EmptyState
             title="Run not found"
@@ -80,7 +80,7 @@ export default function RunDetailScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: `Run ${run.id}` }} />
+      <Tabs.Screen options={{ title: `Run ${run.id}` }} />
       <Screen title={`Run ${run.id}`} subtitle="Inspect the exact payloads and step outputs returned by the workflow V2 run endpoints.">
         <SectionCard title="Run summary">
           <StatusPill label={run.status || 'unknown'} tone={toneForRunStatus(run.status)} />

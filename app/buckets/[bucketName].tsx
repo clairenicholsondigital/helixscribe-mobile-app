@@ -25,7 +25,7 @@ export default function BucketChunksScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: bucketName || 'Bucket' }} />
+      <Tabs.Screen options={{ title: bucketName || 'Bucket' }} />
       <Screen
         title={bucketName}
         subtitle="Showing a lightweight chunk list. Open any chunk for full metadata and editing.">

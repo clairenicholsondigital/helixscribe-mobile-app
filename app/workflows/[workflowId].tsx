@@ -1,4 +1,4 @@
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, Tabs, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
@@ -124,7 +124,7 @@ export default function WorkflowDetailScreen() {
   if (workflowQuery.isLoading && !draft) {
     return (
       <>
-        <Stack.Screen options={{ title: 'Workflow detail' }} />
+        <Tabs.Screen options={{ title: 'Workflow detail' }} />
         <Screen>
           <LoadingState label="Loading workflow…" />
         </Screen>
@@ -135,7 +135,7 @@ export default function WorkflowDetailScreen() {
   if (workflowQuery.isError && !draft) {
     return (
       <>
-        <Stack.Screen options={{ title: 'Workflow detail' }} />
+        <Tabs.Screen options={{ title: 'Workflow detail' }} />
         <Screen>
           <ErrorState
             message={formatError(workflowQuery.error)}
@@ -149,7 +149,7 @@ export default function WorkflowDetailScreen() {
   if (!draft) {
     return (
       <>
-        <Stack.Screen options={{ title: 'Workflow detail' }} />
+        <Tabs.Screen options={{ title: 'Workflow detail' }} />
         <Screen>
           <EmptyState
             title="Workflow not available"
@@ -164,7 +164,7 @@ export default function WorkflowDetailScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title }} />
+      <Tabs.Screen options={{ title }} />
       <Screen
         title={title}
         subtitle="Edit the core workflow fields, then test directly against the existing V2 run endpoint.">

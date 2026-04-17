@@ -1,4 +1,4 @@
-import { router, Stack } from 'expo-router';
+import { router, Tabs } from 'expo-router';
 import { useState } from 'react';
 import { Alert } from 'react-native';
 
@@ -34,7 +34,7 @@ export default function NewWorkflowScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'New workflow' }} />
+      <Tabs.Screen options={{ title: 'New workflow' }} />
       <Screen
         title="New workflow"
         subtitle="Build the smallest workable V2 workflow on mobile, then refine it on the detail screen if needed.">
