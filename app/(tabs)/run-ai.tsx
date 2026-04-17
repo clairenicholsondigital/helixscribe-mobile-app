@@ -1,10 +1,8 @@
 import { Picker } from '@react-native-picker/picker';
 import { router, Stack } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -14,7 +12,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { runWorkflowV2 } from '@/api/workflowsV2';
 import { AppButton } from '@/components/Button';
-import { CodeBlock } from '@/components/CodeBlock';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { Screen } from '@/components/Screen';
@@ -26,46 +23,101 @@ import { formatDateTime, formatError } from '@/lib/utils';
 import { tokens } from '@/theme/tokens';
 import type { WorkflowRunDetailResponse } from '@/types/workflowsV2';
 
-type InputRow = {
-  id: string;
-  key: string;
-  value: string;
-};
-
-type WorkflowStep = {
-  step_type?: string;
-  title?: string;
-  instructions?: string;
-  input_mode?: string;
-  config?: Record<string, unknown>;
-};
-
-type WorkflowDetail = {
+type WorkflowSummary = {
   id: string;
   title?: string;
   aim?: string;
   status?: string;
   is_active?: boolean;
-  metadata?: Record<string, unknown>;
   schedule_summary?: string;
-  steps?: WorkflowStep[];
 };
 
-type SuggestedInput = {
+type WorkflowRunFormField = {
   key: string;
-  source: 'placeholder' | 'common';
-  reason: string;
+  label?: string;
+  type?: string;
+  required?: boolean;
+  description?: string;
+  default?: unknown;
+  example?: unknown;
+  used_in_steps?: Array<{
+    step_index?: number;
+    step_title?: string;
+    step_type?: string;
+  }>;
 };
 
-function blankRow(key = '', value = ''): InputRow {
+type WorkflowRunFormResponse = {
+  workflow: {
+    id: string;
+    title?: string;
+    aim?: string;
+    status?: string;
+    is_active?: boolean;
+    metadata?: Record<string, unknown>;
+    created_at?: string;
+    updated_at?: string;
+  };
+  steps: Array<{
+    id?: string;
+    step_index?: number;
+    step_type?: string;
+    title?: string;
+    instructions?: string;
+    input_mode?: string;
+    config?: Record<string, unknown>;
+  }>;
+  run_form: {
+    mode: 'metadata' | 'inferred';
+    fields: WorkflowRunFormField[];
+    example_payload?: Record<string, unknown>;
+  };
+};
+
+type InputRow = {
+  id: string;
+  key: string;
+  value: string;
+  locked?: boolean;
+};
+
+type FormActionValue =
+  | 'none'
+  | 'reset_examples'
+  | 'reset_blank'
+  | 'add_custom'
+  | 'clear_all';
+
+function blankRow(key = '', value = '', locked = false): InputRow {
   return {
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     key,
-    value
+    value,
+    locked
   };
 }
 
-function coerceInputValue(raw: string): string | number | boolean {
+function toDisplayString(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function coerceInputValue(raw: string): string | number | boolean | Record<string, unknown> | unknown[] {
   const trimmed = raw.trim();
 
   if (!trimmed.length) {
@@ -78,6 +130,17 @@ function coerceInputValue(raw: string): string | number | boolean {
 
   if (trimmed === 'false') {
     return false;
+  }
+
+  if (
+    (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+    (trimmed.startsWith('[') && trimmed.endsWith(']'))
+  ) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      // fall through
+    }
   }
 
   const asNumber = Number(trimmed);
@@ -94,113 +157,41 @@ function prettifyKey(key: string) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function extractStringsDeep(value: unknown): string[] {
-  if (typeof value === 'string') {
-    return [value];
-  }
-
-  if (Array.isArray(value)) {
-    return value.flatMap((item) => extractStringsDeep(item));
-  }
-
-  if (value && typeof value === 'object') {
-    return Object.values(value as Record<string, unknown>).flatMap((item) => extractStringsDeep(item));
-  }
-
-  return [];
+function getFieldLabel(field: WorkflowRunFormField) {
+  return field.label?.trim() || prettifyKey(field.key);
 }
 
-function extractSuggestedInputs(workflow: WorkflowDetail | null): SuggestedInput[] {
-  if (!workflow) {
-    return [];
+function buildRowsFromFields(
+  fields: WorkflowRunFormField[],
+  preferredPayload?: Record<string, unknown>,
+  useBlankValues = false
+): InputRow[] {
+  if (!fields.length) {
+    return [blankRow()];
   }
 
-  const found = new Map<string, SuggestedInput>();
+  return fields.map((field) => {
+    let value = '';
 
-  const steps = workflow.steps ?? [];
-  const placeholderRegex = /\{\{\s*(?:workflow_input|input_payload)\.([a-zA-Z0-9_]+)\s*\}\}/g;
-
-  for (const step of steps) {
-    const haystack = [
-      step.instructions ?? '',
-      ...extractStringsDeep(step.config)
-    ].join('\n');
-
-    const matches = haystack.matchAll(placeholderRegex);
-    for (const match of matches) {
-      const key = match[1]?.trim();
-      if (!key) {
-        continue;
-      }
-
-      if (!found.has(key)) {
-        found.set(key, {
-          key,
-          source: 'placeholder',
-          reason: `Found in step "${step.title || step.step_type || 'Untitled step'}"`
-        });
+    if (!useBlankValues) {
+      if (preferredPayload && field.key in preferredPayload) {
+        value = toDisplayString(preferredPayload[field.key]);
+      } else if (field.example !== undefined && field.example !== null && field.example !== '') {
+        value = toDisplayString(field.example);
+      } else if (field.default !== undefined && field.default !== null && field.default !== '') {
+        value = toDisplayString(field.default);
       }
     }
-  }
 
-  const title = (workflow.title || '').toLowerCase();
-  const aim = (workflow.aim || '').toLowerCase();
-  const combined = `${title} ${aim}`;
-
-  const commonHints: Array<{ key: string; when: boolean; reason: string }> = [
-    {
-      key: 'email_text',
-      when: combined.includes('email'),
-      reason: 'Common for email support workflows'
-    },
-    {
-      key: 'context',
-      when: combined.includes('support') || combined.includes('knowledge'),
-      reason: 'Useful for routing and retrieval context'
-    },
-    {
-      key: 'url',
-      when: combined.includes('url') || combined.includes('blog'),
-      reason: 'Common for URL-based content workflows'
-    },
-    {
-      key: 'topic',
-      when: combined.includes('post') || combined.includes('linkedin') || combined.includes('seo'),
-      reason: 'Useful for topic-driven content workflows'
-    },
-    {
-      key: 'audience',
-      when: combined.includes('post') || combined.includes('marketing') || combined.includes('linkedin'),
-      reason: 'Helpful for tone and relevance'
-    }
-  ];
-
-  for (const hint of commonHints) {
-    if (hint.when && !found.has(hint.key)) {
-      found.set(hint.key, {
-        key: hint.key,
-        source: 'common',
-        reason: hint.reason
-      });
-    }
-  }
-
-  return Array.from(found.values()).sort((a, b) => a.key.localeCompare(b.key));
+    return blankRow(field.key, value, true);
+  });
 }
 
-function summariseStep(step: WorkflowStep, index: number) {
-  const title = step.title || `Step ${index + 1}`;
-  const type = step.step_type || 'unknown';
-  const mode = step.input_mode || 'previous_output';
-
-  return `${index + 1}. ${title} · ${type} · input: ${mode}`;
-}
-
-async function fetchWorkflowV2Detail(workflowId: string): Promise<WorkflowDetail> {
+async function fetchWorkflowV2RunForm(workflowId: string): Promise<WorkflowRunFormResponse> {
   const baseUrl =
     process.env.EXPO_PUBLIC_API_BASE_URL?.replace(/\/$/, '') || 'https://api.helixscribe.cloud';
 
-  const response = await fetch(`${baseUrl}/workflow-v2/workflows/${workflowId}`, {
+  const response = await fetch(`${baseUrl}/workflow-v2/workflows/${workflowId}/run-form`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'
@@ -209,7 +200,7 @@ async function fetchWorkflowV2Detail(workflowId: string): Promise<WorkflowDetail
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Failed to load workflow detail: ${response.status} ${text}`);
+    throw new Error(`Failed to load workflow run form: ${response.status} ${text}`);
   }
 
   return response.json();
@@ -223,6 +214,9 @@ export default function RunAiScreen() {
   const [inputRows, setInputRows] = useState<InputRow[]>([blankRow()]);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<WorkflowRunDetailResponse | null>(null);
+  const [formAction, setFormAction] = useState<FormActionValue>('none');
+
+  const hasInitialisedFormRef = useRef<string | null>(null);
 
   const workflows = workflowsQuery.data?.items ?? [];
 
@@ -235,25 +229,39 @@ export default function RunAiScreen() {
   useEffect(() => {
     setResult(null);
     setInputRows([blankRow()]);
+    hasInitialisedFormRef.current = null;
+    setFormAction('none');
   }, [selectedWorkflowId]);
 
   const selectedWorkflowSummary = useMemo(
-    () => workflows.find((workflow) => workflow.id === selectedWorkflowId) ?? null,
+    () =>
+      (workflows.find((workflow) => workflow.id === selectedWorkflowId) as WorkflowSummary | null) ??
+      null,
     [selectedWorkflowId, workflows]
   );
 
-  const workflowDetailQuery = useQuery({
-    queryKey: [...queryKeys.workflow(selectedWorkflowId), 'detail'],
-    queryFn: () => fetchWorkflowV2Detail(selectedWorkflowId),
+  const workflowRunFormQuery = useQuery({
+    queryKey: [...queryKeys.workflow(selectedWorkflowId), 'run-form'],
+    queryFn: () => fetchWorkflowV2RunForm(selectedWorkflowId),
     enabled: Boolean(selectedWorkflowId)
   });
 
-  const selectedWorkflow = workflowDetailQuery.data ?? null;
+  const workflowRunForm = workflowRunFormQuery.data ?? null;
+  const formFields = workflowRunForm?.run_form?.fields ?? [];
+  const examplePayload = workflowRunForm?.run_form?.example_payload ?? {};
 
-  const suggestedInputs = useMemo(
-    () => extractSuggestedInputs(selectedWorkflow),
-    [selectedWorkflow]
-  );
+  useEffect(() => {
+    if (!selectedWorkflowId || !workflowRunForm) {
+      return;
+    }
+
+    if (hasInitialisedFormRef.current === selectedWorkflowId) {
+      return;
+    }
+
+    setInputRows(buildRowsFromFields(formFields, examplePayload, false));
+    hasInitialisedFormRef.current = selectedWorkflowId;
+  }, [selectedWorkflowId, workflowRunForm, formFields, examplePayload]);
 
   const payloadPreview = useMemo(() => {
     const output: Record<string, unknown> = {};
@@ -273,23 +281,8 @@ export default function RunAiScreen() {
     setInputRows((rows) => rows.map((row) => (row.id === id ? { ...row, [field]: next } : row)));
   }
 
-  function addRow(key = '', value = '') {
-    setInputRows((rows) => [...rows, blankRow(key, value)]);
-  }
-
-  function addSuggestedInput(key: string) {
-    setInputRows((rows) => {
-      const exists = rows.some((row) => row.key.trim() === key);
-      if (exists) {
-        return rows;
-      }
-
-      if (rows.length === 1 && !rows[0].key.trim() && !rows[0].value.trim()) {
-        return [blankRow(key, '')];
-      }
-
-      return [...rows, blankRow(key, '')];
-    });
+  function addCustomRow() {
+    setInputRows((rows) => [...rows, blankRow()]);
   }
 
   function removeRow(id: string) {
@@ -297,45 +290,36 @@ export default function RunAiScreen() {
       if (rows.length <= 1) {
         return [blankRow()];
       }
-
       return rows.filter((row) => row.id !== id);
     });
   }
 
-  function clearInputs() {
+  function resetToExamples() {
+    setInputRows(buildRowsFromFields(formFields, examplePayload, false));
+  }
+
+  function resetToBlankForm() {
+    setInputRows(buildRowsFromFields(formFields, examplePayload, true));
+  }
+
+  function clearEverything() {
     setInputRows([blankRow()]);
   }
 
-  function fillExampleValues() {
-    const nextRows = suggestedInputs.length
-      ? suggestedInputs.map((item) => {
-          let value = '';
+  function handleFormAction(action: FormActionValue) {
+    setFormAction(action);
 
-          switch (item.key) {
-            case 'email_text':
-              value = 'A member says they cannot log in and needs help accessing recordings.';
-              break;
-            case 'context':
-              value = 'NWR member support';
-              break;
-            case 'url':
-              value = 'https://helixscribe.ai/blog/example-post';
-              break;
-            case 'topic':
-              value = 'How internal linking supports SEO';
-              break;
-            case 'audience':
-              value = 'Small business owners';
-              break;
-            default:
-              value = '';
-          }
+    if (action === 'reset_examples') {
+      resetToExamples();
+    } else if (action === 'reset_blank') {
+      resetToBlankForm();
+    } else if (action === 'add_custom') {
+      addCustomRow();
+    } else if (action === 'clear_all') {
+      clearEverything();
+    }
 
-          return blankRow(item.key, value);
-        })
-      : [blankRow('topic', 'Example topic')];
-
-    setInputRows(nextRows);
+    setFormAction('none');
   }
 
   async function handleRunTest() {
@@ -373,9 +357,7 @@ export default function RunAiScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Run AI' }} />
-      <Screen
-        title="Run AI"
-        subtitle="Pick a workflow, see what inputs it likely expects, then run it without guessing JSON keys.">
+      <Screen subtitle="Choose a workflow, fill in the fields, and run it without building the payload by hand.">
         <SectionCard title="Choose workflow">
           {workflowsQuery.isLoading ? (
             <Text style={styles.helperText}>Loading workflows…</Text>
@@ -384,7 +366,7 @@ export default function RunAiScreen() {
           ) : !workflows.length ? (
             <EmptyState
               title="No workflows available"
-              description="Create a workflow first, then come back to run it here."
+              description="Create a workflow first, then come back here to run it."
             />
           ) : (
             <View style={styles.pickerWrap}>
@@ -421,114 +403,105 @@ export default function RunAiScreen() {
           ) : null}
         </SectionCard>
 
-        <SectionCard
-          title="Workflow guide"
-          description="This uses the workflow detail to surface likely inputs and a quick step summary.">
-          {!selectedWorkflowId ? (
-            <Text style={styles.helperText}>Choose a workflow to see its detail.</Text>
-          ) : workflowDetailQuery.isLoading ? (
-            <Text style={styles.helperText}>Loading workflow detail…</Text>
-          ) : workflowDetailQuery.isError ? (
-            <ErrorState message={formatError(workflowDetailQuery.error)} onRetry={workflowDetailQuery.refetch} />
-          ) : selectedWorkflow ? (
+        <SectionCard title="Inputs" description="These fields are ready to fill in straight away.">
+          {workflowRunFormQuery.isLoading ? (
+            <Text style={styles.helperText}>Loading fields…</Text>
+          ) : workflowRunFormQuery.isError ? (
+            <ErrorState
+              message={formatError(workflowRunFormQuery.error)}
+              onRetry={workflowRunFormQuery.refetch}
+            />
+          ) : (
             <>
-              {selectedWorkflow.aim ? (
-                <>
-                  <Text style={styles.subheading}>What this workflow is for</Text>
-                  <Text style={styles.bodyText}>{selectedWorkflow.aim}</Text>
-                </>
-              ) : null}
-
-              <Text style={styles.subheading}>Suggested inputs</Text>
-              {suggestedInputs.length ? (
-                <View style={styles.chipWrap}>
-                  {suggestedInputs.map((item) => (
-                    <Pressable
-                      key={item.key}
-                      onPress={() => addSuggestedInput(item.key)}
-                      style={styles.chip}>
-                      <Text style={styles.chipText}>+ {item.key}</Text>
-                    </Pressable>
-                  ))}
+              <View style={styles.toolbarRow}>
+                <View style={styles.actionPickerWrap}>
+                  <Picker
+                    dropdownIconColor={tokens.colors.text}
+                    selectedValue={formAction}
+                    style={styles.picker}
+                    onValueChange={(value) => handleFormAction(value as FormActionValue)}>
+                    <Picker.Item label="Form actions" value="none" />
+                    <Picker.Item label="Reset to examples" value="reset_examples" />
+                    <Picker.Item label="Reset to blank form" value="reset_blank" />
+                    <Picker.Item label="Add custom field" value="add_custom" />
+                    <Picker.Item label="Clear all" value="clear_all" />
+                  </Picker>
                 </View>
-              ) : (
-                <Text style={styles.helperText}>
-                  No explicit placeholders were detected in the steps, so custom inputs may still be needed.
-                </Text>
-              )}
+              </View>
 
-              {suggestedInputs.length ? (
-                <View style={styles.hintList}>
-                  {suggestedInputs.map((item) => (
-                    <Text key={`${item.key}-hint`} style={styles.helperText}>
-                      • {item.key}: {item.reason}
+              {inputRows.map((row, index) => {
+                const fieldDef = formFields.find((field) => field.key === row.key);
+                const label = fieldDef ? getFieldLabel(fieldDef) : `Field ${index + 1}`;
+                const isMultiline =
+                  fieldDef?.type === 'textarea' ||
+                  row.value.includes('\n') ||
+                  row.value.length > 80;
+
+                return (
+                  <View key={row.id} style={styles.inputRow}>
+                    <Text style={styles.inputLabel}>
+                      {label}
+                      {fieldDef?.required ? ' *' : ''}
                     </Text>
-                  ))}
+
+                    {fieldDef?.description ? (
+                      <Text style={styles.helperText}>{fieldDef.description}</Text>
+                    ) : null}
+
+                    <TextInput
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      onChangeText={(text) => updateRow(row.id, 'value', text)}
+                      placeholder={
+                        fieldDef?.example !== undefined && fieldDef.example !== null && fieldDef.example !== ''
+                          ? `Example: ${toDisplayString(fieldDef.example)}`
+                          : row.key
+                            ? `Value for ${prettifyKey(row.key)}`
+                            : 'Value'
+                      }
+                      placeholderTextColor={tokens.colors.muted}
+                      style={[styles.textInput, isMultiline ? styles.valueInput : null]}
+                      value={row.value}
+                      multiline={isMultiline}
+                    />
+
+                    <View style={styles.rowFooter}>
+                      <Text style={styles.fieldKeyText}>Key: {row.key || 'custom field'}</Text>
+                      <AppButton label="Remove" onPress={() => removeRow(row.id)} tone="ghost" />
+                    </View>
+                  </View>
+                );
+              })}
+
+              {inputRows.some((row) => !row.locked) ? (
+                <View style={styles.customSection}>
+                  <Text style={styles.subheading}>Custom field names</Text>
+                  {inputRows
+                    .filter((row) => !row.locked)
+                    .map((row) => (
+                      <TextInput
+                        key={`${row.id}-key`}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        onChangeText={(text) => updateRow(row.id, 'key', text)}
+                        placeholder="Custom input name"
+                        placeholderTextColor={tokens.colors.muted}
+                        style={styles.textInput}
+                        value={row.key}
+                      />
+                    ))}
                 </View>
               ) : null}
 
               <View style={styles.actionRow}>
-                <AppButton label="Add suggested inputs" onPress={() => suggestedInputs.forEach((item) => addSuggestedInput(item.key))} tone="secondary" />
-                <AppButton label="Fill example values" onPress={fillExampleValues} tone="ghost" />
+                <AppButton
+                  disabled={running || !selectedWorkflowId}
+                  label={running ? 'Running…' : 'Run test'}
+                  onPress={handleRunTest}
+                />
               </View>
-
-              <Text style={styles.subheading}>Step summary</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.stepsBox}>
-                  {(selectedWorkflow.steps ?? []).length ? (
-                    (selectedWorkflow.steps ?? []).map((step, index) => (
-                      <Text key={`${step.title || step.step_type || 'step'}-${index}`} style={styles.stepText}>
-                        {summariseStep(step, index)}
-                      </Text>
-                    ))
-                  ) : (
-                    <Text style={styles.helperText}>No step detail returned for this workflow.</Text>
-                  )}
-                </View>
-              </ScrollView>
             </>
-          ) : null}
-        </SectionCard>
-
-        <SectionCard title="Inputs" description="Tap suggested inputs above, or add your own fields.">
-          {inputRows.map((row, index) => (
-            <View key={row.id} style={styles.inputRow}>
-              <Text style={styles.inputLabel}>Field {index + 1}</Text>
-              <TextInput
-                autoCapitalize="none"
-                autoCorrect={false}
-                onChangeText={(text) => updateRow(row.id, 'key', text)}
-                placeholder={`Input name ${index + 1}`}
-                placeholderTextColor={tokens.colors.muted}
-                style={styles.textInput}
-                value={row.key}
-              />
-              <TextInput
-                autoCapitalize="none"
-                autoCorrect={false}
-                onChangeText={(text) => updateRow(row.id, 'value', text)}
-                placeholder={row.key ? `Value for ${prettifyKey(row.key)}` : 'Value'}
-                placeholderTextColor={tokens.colors.muted}
-                style={[styles.textInput, styles.valueInput]}
-                value={row.value}
-                multiline
-              />
-              <AppButton label="Remove" onPress={() => removeRow(row.id)} tone="ghost" />
-            </View>
-          ))}
-
-          <View style={styles.actionRow}>
-            <AppButton label="Add input" onPress={() => addRow()} tone="secondary" />
-            <AppButton label="Clear" onPress={clearInputs} tone="ghost" />
-            <AppButton
-              disabled={running || !selectedWorkflowId}
-              label={running ? 'Running…' : 'Run test'}
-              onPress={handleRunTest}
-            />
-          </View>
-
-          <Text style={styles.subheading}>Payload preview</Text>
-          <CodeBlock value={JSON.stringify(payloadPreview, null, 2)} />
+          )}
         </SectionCard>
 
         {result ? (
@@ -539,17 +512,18 @@ export default function RunAiScreen() {
             />
             <Text style={styles.helperText}>Run ID: {result.run.id}</Text>
             <Text style={styles.helperText}>
-              Started {formatDateTime(result.run.started_at)} · Completed{' '}
-              {formatDateTime(result.run.completed_at)}
+              Started {formatDateTime(result.run.started_at)} · Completed {formatDateTime(result.run.completed_at)}
             </Text>
 
             <Text style={styles.subheading}>Final output</Text>
-            <CodeBlock value={result.run.final_output_text || 'No final output text returned.'} />
+            <Text style={styles.resultText}>
+              {result.run.final_output_text || 'No final output text returned.'}
+            </Text>
 
             {result.run.error_message ? (
               <>
                 <Text style={styles.subheading}>Error</Text>
-                <CodeBlock value={result.run.error_message} />
+                <Text style={styles.errorText}>{result.run.error_message}</Text>
               </>
             ) : null}
 
@@ -580,6 +554,14 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colors.inputBackground,
     overflow: 'hidden'
   },
+  actionPickerWrap: {
+    minWidth: 220,
+    borderWidth: 1,
+    borderColor: tokens.colors.border,
+    borderRadius: tokens.radius.md,
+    backgroundColor: tokens.colors.inputBackground,
+    overflow: 'hidden'
+  },
   picker: {
     color: tokens.colors.text
   },
@@ -588,43 +570,6 @@ const styles = StyleSheet.create({
   },
   helperText: {
     color: tokens.colors.muted,
-    lineHeight: 20
-  },
-  bodyText: {
-    color: tokens.colors.text,
-    lineHeight: 22
-  },
-  chipWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: tokens.spacing.sm
-  },
-  chip: {
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
-    borderRadius: 999,
-    paddingHorizontal: tokens.spacing.md,
-    paddingVertical: tokens.spacing.xs,
-    backgroundColor: tokens.colors.inputBackground
-  },
-  chipText: {
-    color: tokens.colors.text,
-    fontWeight: '600'
-  },
-  hintList: {
-    gap: tokens.spacing.xs
-  },
-  stepsBox: {
-    minWidth: '100%',
-    gap: tokens.spacing.sm,
-    padding: tokens.spacing.md,
-    borderColor: tokens.colors.border,
-    borderWidth: 1,
-    borderRadius: tokens.radius.md,
-    backgroundColor: tokens.colors.inputBackground
-  },
-  stepText: {
-    color: tokens.colors.text,
     lineHeight: 20
   },
   inputRow: {
@@ -650,8 +595,26 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.spacing.sm
   },
   valueInput: {
-    minHeight: 72,
+    minHeight: 96,
     textAlignVertical: 'top'
+  },
+  rowFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: tokens.spacing.sm
+  },
+  fieldKeyText: {
+    color: tokens.colors.muted,
+    fontSize: 12,
+    flex: 1
+  },
+  customSection: {
+    gap: tokens.spacing.sm
+  },
+  toolbarRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start'
   },
   actionRow: {
     flexDirection: 'row',
@@ -662,5 +625,13 @@ const styles = StyleSheet.create({
     color: tokens.colors.text,
     fontSize: 14,
     fontWeight: '700'
+  },
+  resultText: {
+    color: tokens.colors.text,
+    lineHeight: 22
+  },
+  errorText: {
+    color: tokens.colors.text,
+    lineHeight: 22
   }
 });

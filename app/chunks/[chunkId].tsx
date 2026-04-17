@@ -26,9 +26,7 @@ export default function ChunkDetailScreen() {
   return (
     <>
       <Stack.Screen options={{ title: chunk?.title || 'Chunk detail' }} />
-      <Screen
-        title={chunk?.title || 'Chunk detail'}
-        subtitle="Full chunk metadata and edit controls live here so the bucket list stays clean.">
+      <Screen>
         {!bucketName ? (
           <ErrorState message="Missing bucket name in route. Open this page from a bucket chunk list." />
         ) : null}
