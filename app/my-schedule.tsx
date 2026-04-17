@@ -1,6 +1,8 @@
+import { router } from 'expo-router';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 
+import { AppButton } from '@/components/Button';
 import { ErrorState } from '@/components/ErrorState';
 import { LoadingState } from '@/components/LoadingState';
 import { Screen } from '@/components/Screen';
@@ -80,7 +82,6 @@ export default function MyScheduleScreen() {
         title="My Schedule"
         subtitle="There was a problem loading scheduled workflow items.">
         <ErrorState
-          title="Could not load schedules"
           message={error instanceof Error ? error.message : 'Unknown error'}
           onRetry={refetch}
         />
@@ -116,6 +117,28 @@ export default function MyScheduleScreen() {
                   <Text style={styles.meta}>Schedule ID: {item.id}</Text>
                   <Text style={styles.meta}>Updated: {formatDateTime(item.updated_at)}</Text>
                 </View>
+
+                <View style={styles.actionRow}>
+                  <AppButton
+                    label="View schedule"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/schedules/[scheduleId]',
+                        params: { scheduleId: item.id },
+                      })
+                    }
+                  />
+                  <AppButton
+                    label="Open workflow"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/workflows/[workflowId]',
+                        params: { workflowId: item.workflow_id },
+                      })
+                    }
+                    tone="ghost"
+                  />
+                </View>
               </SectionCard>
             ))
           )}
@@ -145,5 +168,11 @@ const styles = StyleSheet.create({
     color: tokens.colors.muted,
     fontSize: 12,
     lineHeight: 18,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: tokens.spacing.sm,
+    marginTop: tokens.spacing.xs,
   },
 });
