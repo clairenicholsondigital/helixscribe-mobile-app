@@ -1,4 +1,6 @@
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
+import { Alert, Platform, Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppButton } from '@/components/Button';
 import { formatError, parseJsonObject } from '@/lib/utils';
@@ -22,11 +24,35 @@ export function StepEditor({
   onMoveUp,
   onMoveDown
 }: StepEditorProps) {
+  const [isConfigExpanded, setIsConfigExpanded] = useState(false);
+
   let configError: string | null = null;
   try {
     parseJsonObject(step.configText, `Step ${index + 1} config`);
   } catch (error) {
     configError = formatError(error);
+  }
+
+  async function handleCopyInstructions() {
+    const instructions = step.instructions ?? '';
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(instructions);
+        Alert.alert('Copied', 'Instructions copied to clipboard.');
+        return;
+      }
+
+      await Share.share({ message: instructions });
+      Alert.alert(
+        'Share opened',
+        Platform.OS === 'ios' || Platform.OS === 'android'
+          ? 'Clipboard is unavailable in this environment. A share sheet was opened instead.'
+          : 'Clipboard is unavailable in this environment.'
+      );
+    } catch {
+      Alert.alert('Error', 'Could not copy instructions.');
+    }
   }
 
   return (
@@ -78,10 +104,23 @@ export function StepEditor({
       </View>
 
       <View style={styles.field}>
-        <Text style={styles.label}>Instructions</Text>
+        <View style={styles.labelRow}>
+          <Text style={styles.label}>Instructions</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={handleCopyInstructions}
+            style={styles.copyButton}>
+            <Ionicons
+              name="copy-outline"
+              size={14}
+              color={tokens.colors.primary}
+            />
+            <Text style={styles.copyButtonLabel}>Copy</Text>
+          </Pressable>
+        </View>
         <TextInput
           multiline
-          numberOfLines={4}
+          numberOfLines={6}
           onChangeText={(value) => onChange({ ...step, instructions: value })}
           placeholder="What should this step do?"
           placeholderTextColor={tokens.colors.muted}
@@ -92,22 +131,37 @@ export function StepEditor({
       </View>
 
       <View style={styles.field}>
-        <Text style={styles.label}>Config JSON</Text>
-        <TextInput
-          autoCapitalize="none"
-          autoCorrect={false}
-          multiline
-          numberOfLines={8}
-          onChangeText={(value) => onChange({ ...step, configText: value })}
-          placeholder='{"bucket_name":"notes","top_k":5}'
-          placeholderTextColor={tokens.colors.muted}
-          style={[styles.input, styles.codeArea]}
-          textAlignVertical="top"
-          value={step.configText}
-        />
-        <Text style={[styles.help, configError ? styles.errorText : null]}>
-          {configError ?? 'Config must be a JSON object.'}
-        </Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setIsConfigExpanded((value) => !value)}
+          style={styles.accordionHeader}>
+          <Text style={styles.label}>Config JSON</Text>
+          <Ionicons
+            name={isConfigExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
+            size={16}
+            color={tokens.colors.muted}
+          />
+        </Pressable>
+
+        {isConfigExpanded ? (
+          <View style={styles.accordionBody}>
+            <TextInput
+              autoCapitalize="none"
+              autoCorrect={false}
+              multiline
+              numberOfLines={8}
+              onChangeText={(value) => onChange({ ...step, configText: value })}
+              placeholder='{"bucket_name":"notes","top_k":5}'
+              placeholderTextColor={tokens.colors.muted}
+              style={[styles.input, styles.codeArea]}
+              textAlignVertical="top"
+              value={step.configText}
+            />
+            <Text style={[styles.help, configError ? styles.errorText : null]}>
+              {configError ?? 'Config must be a JSON object.'}
+            </Text>
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -143,6 +197,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600'
   },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
   input: {
     backgroundColor: tokens.colors.inputBackground,
     borderColor: tokens.colors.border,
@@ -154,11 +213,36 @@ const styles = StyleSheet.create({
     fontSize: 15
   },
   textArea: {
-    minHeight: 88
+    minHeight: 128
   },
   codeArea: {
     minHeight: 160,
     fontFamily: 'Courier'
+  },
+  copyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacing.xs,
+    paddingHorizontal: tokens.spacing.sm,
+    paddingVertical: 6,
+    borderRadius: tokens.radius.md,
+    borderWidth: 1,
+    borderColor: tokens.colors.border,
+    backgroundColor: tokens.colors.background
+  },
+  copyButtonLabel: {
+    color: tokens.colors.primary,
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  accordionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 40
+  },
+  accordionBody: {
+    gap: tokens.spacing.xs
   },
   help: {
     color: tokens.colors.muted,
