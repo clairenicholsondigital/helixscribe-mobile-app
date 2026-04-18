@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Alert, Platform, Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppButton } from '@/components/Button';
+import { InstructionsEditorField } from '@/components/InstructionsEditorField';
 import { formatError, parseJsonObject } from '@/lib/utils';
 import { tokens } from '@/theme/tokens';
 import type { WorkflowStepDraft } from '@/types/workflowsV2';
@@ -106,27 +107,11 @@ export function StepEditor({
       <View style={styles.field}>
         <View style={styles.labelRow}>
           <Text style={styles.label}>Instructions</Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={handleCopyInstructions}
-            style={styles.copyButton}>
-            <Ionicons
-              name="copy-outline"
-              size={14}
-              color={tokens.colors.primary}
-            />
-            <Text style={styles.copyButtonLabel}>Copy</Text>
-          </Pressable>
         </View>
-        <TextInput
-          multiline
-          numberOfLines={6}
-          onChangeText={(value) => onChange({ ...step, instructions: value })}
-          placeholder="What should this step do?"
-          placeholderTextColor={tokens.colors.muted}
-          style={[styles.input, styles.textArea]}
-          textAlignVertical="top"
-          value={step.instructions}
+        <InstructionsEditorField
+          value={step.instructions ?? ''}
+          onChange={(value) => onChange({ ...step, instructions: value })}
+          onCopy={handleCopyInstructions}
         />
       </View>
 
@@ -212,28 +197,9 @@ const styles = StyleSheet.create({
     color: tokens.colors.text,
     fontSize: 15
   },
-  textArea: {
-    minHeight: 128
-  },
   codeArea: {
     minHeight: 160,
     fontFamily: 'Courier'
-  },
-  copyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spacing.xs,
-    paddingHorizontal: tokens.spacing.sm,
-    paddingVertical: 6,
-    borderRadius: tokens.radius.md,
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
-    backgroundColor: tokens.colors.background
-  },
-  copyButtonLabel: {
-    color: tokens.colors.primary,
-    fontSize: 12,
-    fontWeight: '600'
   },
   accordionHeader: {
     flexDirection: 'row',
