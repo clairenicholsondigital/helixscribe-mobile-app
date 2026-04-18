@@ -80,9 +80,7 @@ export function InboxScreen() {
   const bucketItems = bucketsQuery.data?.items ?? [];
 
   return (
-    <Screen
-      title="Inbox submission"
-      subtitle="Capture notes quickly and route them straight into inbox_untriaged or a real knowledge bucket.">
+    <Screen>
       <SectionCard title="Submit a note">
         <View style={styles.field}>
           <Text style={styles.label}>Title</Text>

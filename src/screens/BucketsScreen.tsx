@@ -15,9 +15,7 @@ export function BucketsScreen() {
   const bucketsQuery = useBuckets();
 
   return (
-    <Screen
-      title="Knowledge buckets"
-      subtitle="Open a bucket to view and edit the chunks that already live inside it.">
+    <Screen>
       {bucketsQuery.isLoading ? <LoadingState label="Loading buckets…" /> : null}
 
       {bucketsQuery.isError ? (
