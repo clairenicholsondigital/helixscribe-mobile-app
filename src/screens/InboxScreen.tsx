@@ -4,6 +4,7 @@ import { Picker } from '@react-native-picker/picker';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { AppButton } from '@/components/Button';
+import { ExpandableTextInput } from '@/components/ExpandableTextInput';
 import { CodeBlock } from '@/components/CodeBlock';
 import { ErrorState } from '@/components/ErrorState';
 import { LoadingState } from '@/components/LoadingState';
@@ -96,14 +97,13 @@ export function InboxScreen() {
 
         <View style={styles.field}>
           <Text style={styles.label}>Details</Text>
-          <TextInput
-            multiline
-            numberOfLines={8}
+          <ExpandableTextInput
+            fieldLabel="Details"
+            helperText="Open full screen for easier editing of longer notes."
+            inputProps={{ multiline: true, numberOfLines: 8, style: [styles.input, styles.textArea], textAlignVertical: 'top' }}
+            modalTitle="Edit details"
             onChangeText={setChunkText}
             placeholder="Type the note or captured text here"
-            placeholderTextColor={tokens.colors.muted}
-            style={[styles.input, styles.textArea]}
-            textAlignVertical="top"
             value={chunkText}
           />
         </View>

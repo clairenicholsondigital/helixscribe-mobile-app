@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Platform, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppButton } from '@/components/Button';
 import { CodeBlock } from '@/components/CodeBlock';
+import { InstructionsEditorField } from '@/components/InstructionsEditorField';
 import { TagInput } from '@/components/TagInput';
 import { deleteChunk, updateChunk } from '@/api/chunks';
 import { formatDateTime, formatError, parseTagsInput, tagsToInput } from '@/lib/utils';
@@ -39,6 +40,26 @@ export function ChunkEditorCard({ chunk, onSaved, onDeleted }: ChunkEditorCardPr
     }
   }
 
+
+  async function handleCopyChunkText() {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(chunkText);
+        Alert.alert('Copied', 'Chunk text copied to clipboard.');
+        return;
+      }
+
+      await Share.share({ message: chunkText });
+      Alert.alert(
+        'Share opened',
+        Platform.OS === 'ios' || Platform.OS === 'android'
+          ? 'Clipboard is unavailable in this environment. A share sheet was opened instead.'
+          : 'Clipboard is unavailable in this environment.'
+      );
+    } catch {
+      Alert.alert('Error', 'Could not copy chunk text.');
+    }
+  }
   function handleDeleteConfirm() {
     Alert.alert('Delete chunk?', `Delete ${chunk.id}? This cannot be undone.`, [
       { text: 'Cancel', style: 'cancel' },
@@ -90,15 +111,16 @@ export function ChunkEditorCard({ chunk, onSaved, onDeleted }: ChunkEditorCardPr
 
       <View style={styles.field}>
         <Text style={styles.label}>Chunk text</Text>
-        <TextInput
-          multiline
-          numberOfLines={6}
-          onChangeText={setChunkText}
-          placeholder="Chunk text"
-          placeholderTextColor={tokens.colors.muted}
-          style={[styles.input, styles.textArea]}
-          textAlignVertical="top"
+        <InstructionsEditorField
           value={chunkText}
+          onChange={setChunkText}
+          onCopy={handleCopyChunkText}
+          fieldLabel="Chunk text"
+          placeholder="Chunk text"
+          previewEmptyText="No chunk text yet."
+          helperText="Open full editor for easier chunk text editing."
+          modalTitle="Edit chunk text"
+          modalDescription="Use the full editor to read and edit long chunk text comfortably."
         />
       </View>
 
@@ -162,9 +184,6 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.spacing.sm,
     color: tokens.colors.text,
     fontSize: 15
-  },
-  textArea: {
-    minHeight: 128
   },
   actionRow: {
     flexDirection: 'row',
