@@ -12,6 +12,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { runWorkflowV2 } from '@/api/workflowsV2';
 import { AppButton } from '@/components/Button';
+import { ExpandableTextInput } from '@/components/ExpandableTextInput';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { Screen } from '@/components/Screen';
@@ -448,9 +449,17 @@ export default function RunAiScreen() {
                       <Text style={styles.helperText}>{fieldDef.description}</Text>
                     ) : null}
 
-                    <TextInput
-                      autoCapitalize="none"
-                      autoCorrect={false}
+                    <ExpandableTextInput
+                      fieldLabel={label}
+                      helperText={isMultiline ? 'Tip: open full screen for easier editing.' : undefined}
+                      inputProps={{
+                        autoCapitalize: 'none',
+                        autoCorrect: false,
+                        multiline: isMultiline,
+                        style: [styles.textInput, isMultiline ? styles.valueInput : null],
+                        textAlignVertical: isMultiline ? 'top' : 'center'
+                      }}
+                      modalTitle={`Edit ${label}`}
                       onChangeText={(text) => updateRow(row.id, 'value', text)}
                       placeholder={
                         fieldDef?.example !== undefined && fieldDef.example !== null && fieldDef.example !== ''
@@ -459,10 +468,7 @@ export default function RunAiScreen() {
                             ? `Value for ${prettifyKey(row.key)}`
                             : 'Value'
                       }
-                      placeholderTextColor={tokens.colors.muted}
-                      style={[styles.textInput, isMultiline ? styles.valueInput : null]}
                       value={row.value}
-                      multiline={isMultiline}
                     />
 
                     <View style={styles.rowFooter}>
