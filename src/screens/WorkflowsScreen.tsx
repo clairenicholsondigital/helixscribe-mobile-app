@@ -49,8 +49,7 @@ export function WorkflowsScreen() {
   return (
     <Screen
       actions={<AppButton label="New workflow" onPress={() => router.push('/workflows/new')} />}
-      title="Workflows V2"
-      subtitle="Browse, open, and test the mobile-first subset of your V2 workflow manager.">
+     >
       {workflowsQuery.isLoading ? <LoadingState label="Loading workflows…" /> : null}
 
       {workflowsQuery.isError ? (
