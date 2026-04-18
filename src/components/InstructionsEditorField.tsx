@@ -19,27 +19,9 @@ type InstructionsEditorFieldProps = {
   value: string;
   onChange: (value: string) => void;
   onCopy: () => void;
-  fieldLabel?: string;
-  placeholder?: string;
-  previewEmptyText?: string;
-  helperText?: string;
-  modalTitle?: string;
-  modalDescription?: string;
-  editButtonLabel?: string;
 };
 
-export function InstructionsEditorField({
-  value,
-  onChange,
-  onCopy,
-  fieldLabel = 'Instructions',
-  placeholder = 'What should this step do?',
-  previewEmptyText = 'No instructions yet.',
-  helperText = 'Open full editor for easier editing.',
-  modalTitle = 'Edit instructions',
-  modalDescription = 'Use the full editor to review and edit long prompts comfortably.',
-  editButtonLabel = 'Edit full screen'
-}: InstructionsEditorFieldProps) {
+export function InstructionsEditorField({ value, onChange, onCopy }: InstructionsEditorFieldProps) {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const [isExpanded, setIsExpanded] = useState(false);
@@ -73,27 +55,23 @@ export function InstructionsEditorField({
           multiline
           numberOfLines={8}
           onChangeText={onChange}
-          placeholder={placeholder}
+          placeholder="What should this step do?"
           placeholderTextColor={tokens.colors.muted}
           style={[styles.input, styles.desktopTextArea]}
           textAlignVertical="top"
           value={value}
         />
         <View style={styles.desktopActionsRow}>
-          <AppButton label={editButtonLabel} onPress={openExpandedEditor} tone="ghost" size="small" />
+          <AppButton label="Edit full screen" onPress={openExpandedEditor} tone="ghost" size="small" />
         </View>
 
         <InstructionsEditorModal
           draftValue={draftValue}
-          fieldLabel={fieldLabel}
           isVisible={isExpanded}
-          modalDescription={modalDescription}
-          modalTitle={modalTitle}
           onCancel={handleCancel}
           onCopy={onCopy}
           onDraftChange={setDraftValue}
           onSave={handleSave}
-          placeholder={placeholder}
         />
       </View>
     );
@@ -106,11 +84,11 @@ export function InstructionsEditorField({
           numberOfLines={5}
           ellipsizeMode="tail"
           style={[styles.previewText, !value ? styles.placeholderText : null]}>
-          {value || previewEmptyText}
+          {value || 'No instructions yet.'}
         </Text>
       </View>
 
-      <Text style={styles.helpText}>{helperText}</Text>
+      <Text style={styles.helpText}>Open full editor for easier editing.</Text>
 
       <View style={styles.mobileActionsRow}>
         <Pressable accessibilityRole="button" onPress={onCopy} style={styles.iconButton}>
@@ -118,20 +96,16 @@ export function InstructionsEditorField({
           <Text style={styles.iconButtonLabel}>Copy</Text>
         </Pressable>
 
-        <AppButton label={editButtonLabel} onPress={openExpandedEditor} tone="ghost" />
+        <AppButton label="Edit full screen" onPress={openExpandedEditor} tone="ghost" />
       </View>
 
       <InstructionsEditorModal
         draftValue={draftValue}
-        fieldLabel={fieldLabel}
         isVisible={isExpanded}
-        modalDescription={modalDescription}
-        modalTitle={modalTitle}
         onCancel={handleCancel}
         onCopy={onCopy}
         onDraftChange={setDraftValue}
         onSave={handleSave}
-        placeholder={placeholder}
       />
     </View>
   );
@@ -140,10 +114,6 @@ export function InstructionsEditorField({
 type InstructionsEditorModalProps = {
   isVisible: boolean;
   draftValue: string;
-  fieldLabel: string;
-  placeholder: string;
-  modalTitle: string;
-  modalDescription: string;
   onDraftChange: (value: string) => void;
   onCancel: () => void;
   onSave: () => void;
@@ -153,10 +123,6 @@ type InstructionsEditorModalProps = {
 function InstructionsEditorModal({
   isVisible,
   draftValue,
-  fieldLabel,
-  placeholder,
-  modalTitle,
-  modalDescription,
   onDraftChange,
   onCancel,
   onSave,
@@ -173,13 +139,15 @@ function InstructionsEditorModal({
         behavior={Platform.select({ ios: 'padding', default: undefined })}
         style={styles.modalContainer}>
         <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>{modalTitle}</Text>
-          <Text style={styles.modalDescription}>{modalDescription}</Text>
+          <Text style={styles.modalTitle}>Edit instructions</Text>
+          <Text style={styles.modalDescription}>
+            Use the full editor to review and edit long prompts comfortably.
+          </Text>
         </View>
 
         <View style={styles.modalField}>
           <View style={styles.modalLabelRow}>
-            <Text style={styles.modalLabel}>{fieldLabel}</Text>
+            <Text style={styles.modalLabel}>Instructions</Text>
             <Pressable accessibilityRole="button" onPress={onCopy} style={styles.iconButton}>
               <Ionicons name="copy-outline" size={14} color={tokens.colors.primary} />
               <Text style={styles.iconButtonLabel}>Copy</Text>
@@ -190,7 +158,7 @@ function InstructionsEditorModal({
             autoFocus
             multiline
             onChangeText={onDraftChange}
-            placeholder={placeholder}
+            placeholder="What should this step do?"
             placeholderTextColor={tokens.colors.muted}
             scrollEnabled
             style={[styles.input, styles.fullscreenTextArea]}
