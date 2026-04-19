@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { AppButton } from '@/components/Button';
@@ -20,6 +20,25 @@ export function WorkflowsScreen() {
   const queryClient = useQueryClient();
   const workflowsQuery = useWorkflowsV2();
   const [runningWorkflowId, setRunningWorkflowId] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setSearchTerm(searchInput.trim().toLowerCase());
+    }, 250);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchInput]);
+
+  const filteredWorkflows = useMemo(() => {
+    const items = workflowsQuery.data?.items ?? [];
+    if (!searchTerm) {
+      return items;
+    }
+
+    return items.filter((workflow) => workflow.title.toLowerCase().includes(searchTerm));
+  }, [workflowsQuery.data?.items, searchTerm]);
 
   async function handleRun(workflowId: string) {
     setRunningWorkflowId(workflowId);
@@ -48,8 +67,21 @@ export function WorkflowsScreen() {
 
   return (
     <Screen
-      actions={<AppButton label="New workflow" onPress={() => router.push('/workflows/new')} />}
-     >
+      actions={
+        <View style={styles.searchContainer}>
+          <Text style={styles.searchLabel}>Search workflows</Text>
+          <TextInput
+            accessibilityLabel="Search workflows by name"
+            autoCapitalize="none"
+            autoCorrect={false}
+            onChangeText={setSearchInput}
+            placeholder="Type a workflow name..."
+            placeholderTextColor={tokens.colors.muted}
+            style={styles.searchInput}
+            value={searchInput}
+          />
+        </View>
+      }>
       {workflowsQuery.isLoading ? <LoadingState label="Loading workflows…" /> : null}
 
       {workflowsQuery.isError ? (
@@ -62,11 +94,18 @@ export function WorkflowsScreen() {
       {!workflowsQuery.isLoading && !workflowsQuery.isError && !workflowsQuery.data?.items.length ? (
         <EmptyState
           title="No workflows found"
-          description="Create the first mobile workflow from the button above."
+          description="Use the + button in the top-right to create your first workflow."
         />
       ) : null}
 
-      {(workflowsQuery.data?.items ?? []).map((workflow) => (
+      {!workflowsQuery.isLoading && !workflowsQuery.isError && !filteredWorkflows.length && searchTerm ? (
+        <EmptyState
+          title="No matching workflows"
+          description={`No workflow titles match "${searchInput.trim()}".`}
+        />
+      ) : null}
+
+      {filteredWorkflows.map((workflow) => (
         <SectionCard
           key={workflow.id}
           title={workflow.title}
@@ -118,6 +157,23 @@ export function WorkflowsScreen() {
 }
 
 const styles = StyleSheet.create({
+  searchContainer: {
+    gap: tokens.spacing.xs
+  },
+  searchLabel: {
+    color: tokens.colors.muted,
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: tokens.colors.border,
+    borderRadius: tokens.radius.md,
+    paddingHorizontal: tokens.spacing.md,
+    paddingVertical: tokens.spacing.sm,
+    color: tokens.colors.text,
+    backgroundColor: tokens.colors.inputBackground
+  },
   pillRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
