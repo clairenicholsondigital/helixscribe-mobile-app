@@ -139,6 +139,12 @@ export type WorkflowDeleteRunResponse = {
   status: string;
 };
 
+export type WorkflowDeleteResponse = {
+  ok: boolean;
+  deleted_workflow_id: string;
+  status: string;
+};
+
 export type WorkflowStepDraft = {
   step_type: string;
   title: string;

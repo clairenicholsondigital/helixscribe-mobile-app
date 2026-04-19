@@ -141,7 +141,7 @@ export function WorkflowForm({ draft, onChange }: WorkflowFormProps) {
 
         {draft.steps.map((step, index) => (
           <StepEditor
-            key={`${index}-${step.title}-${step.step_type}`}
+            key={index}
             index={index}
             onChange={(nextStep) => updateStep(index, nextStep)}
             onDelete={() => removeStep(index)}

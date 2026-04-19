@@ -10,7 +10,7 @@ import { LoadingState } from '@/components/LoadingState';
 import { Screen } from '@/components/Screen';
 import { SectionCard } from '@/components/SectionCard';
 import { StatusPill, toneForRunStatus } from '@/components/StatusPill';
-import { runWorkflowV2 } from '@/api/workflowsV2';
+import { deleteWorkflowV2, runWorkflowV2 } from '@/api/workflowsV2';
 import { useWorkflowsV2 } from '@/hooks/useWorkflowsV2';
 import { queryKeys } from '@/lib/queryKeys';
 import { formatDateTime, formatError, truncateText } from '@/lib/utils';
@@ -20,6 +20,7 @@ export function WorkflowsScreen() {
   const queryClient = useQueryClient();
   const workflowsQuery = useWorkflowsV2();
   const [runningWorkflowId, setRunningWorkflowId] = useState<string | null>(null);
+  const [deletingWorkflowId, setDeletingWorkflowId] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -63,6 +64,40 @@ export function WorkflowsScreen() {
     } finally {
       setRunningWorkflowId(null);
     }
+  }
+
+  async function handleDelete(workflowId: string) {
+    setDeletingWorkflowId(workflowId);
+    try {
+      await deleteWorkflowV2(workflowId);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.workflows }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.workflow(workflowId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.workflowRuns(workflowId) })
+      ]);
+      Alert.alert('Deleted', 'Workflow was deleted.');
+    } catch (error) {
+      Alert.alert('Delete failed', formatError(error));
+    } finally {
+      setDeletingWorkflowId(null);
+    }
+  }
+
+  function confirmDelete(workflowId: string, workflowTitle: string) {
+    Alert.alert(
+      'Delete workflow?',
+      `Are you sure you want to delete "${workflowTitle}"? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            void handleDelete(workflowId);
+          }
+        }
+      ]
+    );
   }
 
   return (
@@ -148,6 +183,13 @@ export function WorkflowsScreen() {
               label={runningWorkflowId === workflow.id ? 'Running…' : 'Run now'}
               onPress={() => handleRun(workflow.id)}
               tone="ghost"
+            />
+            <AppButton
+              disabled={deletingWorkflowId === workflow.id}
+              label={deletingWorkflowId === workflow.id ? 'Deleting…' : 'Delete'}
+              onPress={() => confirmDelete(workflow.id, workflow.title)}
+              size="small"
+              tone="danger"
             />
           </View>
         </SectionCard>

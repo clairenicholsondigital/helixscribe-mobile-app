@@ -1,6 +1,7 @@
 import { api, jsonBody } from '@/api/client';
 import type {
   WorkflowCreatePayload,
+  WorkflowDeleteResponse,
   WorkflowDeleteRunResponse,
   WorkflowDetailResponse,
   WorkflowListResponse,
@@ -33,6 +34,12 @@ export function updateWorkflowV2(
   return api<WorkflowMutateResponse>(`/workflow-v2/workflows/${encodeURIComponent(workflowId)}`, {
     method: 'PATCH',
     body: jsonBody(payload)
+  });
+}
+
+export function deleteWorkflowV2(workflowId: string): Promise<WorkflowDeleteResponse> {
+  return api<WorkflowDeleteResponse>(`/workflow-v2/workflows/${encodeURIComponent(workflowId)}`, {
+    method: 'DELETE'
   });
 }
 
