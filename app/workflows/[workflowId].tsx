@@ -1,6 +1,6 @@
 import { router, Tabs, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { AppButton } from '@/components/Button';
@@ -85,6 +85,31 @@ export default function WorkflowDetailScreen() {
     }
   }
 
+  async function handleCopyWorkflowCode() {
+    const curlCommand = [
+      'BASE_URL="https://api.helixscribe.cloud"',
+      `curl -sS "$BASE_URL/workflow-v2/workflows/${workflowId}" -H "Accept: application/json" | jq '.steps'`
+    ].join('\n');
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(curlCommand);
+        Alert.alert('Copied', 'Workflow curl command copied to clipboard.');
+        return;
+      }
+
+      await Share.share({ message: curlCommand });
+      Alert.alert(
+        'Share opened',
+        Platform.OS === 'ios' || Platform.OS === 'android'
+          ? 'Clipboard is unavailable in this environment. A share sheet was opened instead.'
+          : 'Clipboard is unavailable in this environment.'
+      );
+    } catch {
+      Alert.alert('Error', 'Could not copy workflow curl command.');
+    }
+  }
+
   if (workflowQuery.isLoading && !draft) {
     return (
       <>
@@ -135,6 +160,11 @@ export default function WorkflowDetailScreen() {
         <WorkflowForm draft={draft} onChange={setDraft} />
 
         <SectionCard title="Save changes">
+          <AppButton
+            label="Copy workflow code"
+            tone="ghost"
+            onPress={handleCopyWorkflowCode}
+          />
           <AppButton
             disabled={saving}
             label={saving ? 'Saving…' : 'Save workflow'}
