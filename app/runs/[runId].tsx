@@ -1,5 +1,5 @@
 import { router, Tabs, useLocalSearchParams } from 'expo-router';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Share, StyleSheet, Text, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { AppButton } from '@/components/Button';
@@ -36,6 +36,29 @@ export default function RunDetailScreen() {
       router.back();
     } catch (error) {
       Alert.alert('Delete failed', formatError(error));
+    }
+  }
+
+  async function handleCopyRunOutput() {
+    const runPayload = runQuery.data;
+    const runOutputJson = prettyJson(runPayload ?? {});
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(runOutputJson);
+        Alert.alert('Copied', 'Run output JSON copied to clipboard.');
+        return;
+      }
+
+      await Share.share({ message: runOutputJson });
+      Alert.alert(
+        'Share opened',
+        Platform.OS === 'ios' || Platform.OS === 'android'
+          ? 'Clipboard is unavailable in this environment. A share sheet was opened instead.'
+          : 'Clipboard is unavailable in this environment.'
+      );
+    } catch {
+      Alert.alert('Error', 'Could not copy run output JSON.');
     }
   }
 
@@ -95,6 +118,8 @@ export default function RunDetailScreen() {
 
           <Text style={styles.subheading}>Final output</Text>
           <CodeBlock value={run.final_output_text || 'No final output text returned.'} />
+
+          <AppButton label="Copy run output" onPress={handleCopyRunOutput} tone="ghost" />
 
           {run.error_message ? (
             <>
